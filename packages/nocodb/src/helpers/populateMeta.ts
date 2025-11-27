@@ -319,7 +319,7 @@ export async function populateMeta(
       const virtualColumns = [
         ...hasMany.map((hm) => {
           return {
-            uidt: UITypes.Links,
+            uidt: UITypes.LinkToAnotherRecord,
             type: 'hm',
             hm,
             title: pluralize(hm.title),
