@@ -83,8 +83,17 @@ export const nestedLimitParam = {
   in: 'query',
   name: 'nestedLimit',
   description:
-    'Sets a limit on the number of linked records returned for each link/relation field in the API response. By default, up to 1000 linked records are returned per field. In API v3, nested fields contain the actual linked record data (not just count). Use this parameter to control how many linked records are included.\n\nExample: nestedLimit=`50` will limit each link field to return at most 50 linked records with their full data.\n\n**Note**: This applies to all link fields in the response. The default value can be configured via the `DB_QUERY_LIMIT_LTAR_V3_LIMIT` environment variable.',
+    'Sets a limit on the number of linked records returned for each link/relation field when using `nested[columnName][fields]` parameter. By default, up to 1000 linked records are returned per field. This parameter controls the maximum quantity of nested records.\n\nExample: `nestedLimit=50` combined with `nested[Projects][fields]=*` will limit the Projects field to return at most 50 linked records.\n\n**Note**: To get nested field data instead of just counts, you must also use `nested[columnName][fields]=*` parameter. This applies to all link fields in the response. The default value can be configured via the `DB_QUERY_LIMIT_LTAR_V3_LIMIT` environment variable.',
 };
+
+export const nestedFieldParamV3 = (colName) => ({
+  schema: {
+    type: 'string',
+  },
+  in: 'query',
+  name: `nested[${colName}][fields]`,
+  description: `Array of field names or comma separated field names to include in the nested column \`${colName}\` result. **By default, nested fields return only counts or primary keys.** Use this parameter to get actual field data from linked records.\n\n**Special value:** Use \`*\` to include all fields.\n\nExamples:\n- \`nested[${colName}][fields]=*\` - Returns all fields from linked records\n- \`nested[${colName}][fields]=field1,field2\` - Returns only field1 and field2`,
+});
 
 export const linkFieldNameParam = (columns: SwaggerColumn[]) => {
   const linkColumnIds = [];

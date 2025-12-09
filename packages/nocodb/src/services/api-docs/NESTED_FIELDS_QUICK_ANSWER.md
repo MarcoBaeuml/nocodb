@@ -5,57 +5,54 @@ You want nested fields to contain actual data instead of just counts in NocoDB A
 
 ## Solution
 
-### For API v2
+**Both API v2 and v3 use the same approach** - you must explicitly request nested field data using the `nested[columnName][fields]` parameter.
+
+### For API v2 AND v3
 
 Use the `nested[columnName][fields]=*` parameter to get full data from linked records:
 
 ```bash
-# Example: Get all fields from nested "Projects" column
+# API v2 Example
 GET /api/v2/tables/{tableId}/records?nested[Projects][fields]=*
 
-# Example: Get specific fields
-GET /api/v2/tables/{tableId}/records?nested[Projects][fields]=name,status,budget
+# API v3 Example  
+GET /api/v3/data/{baseId}/{tableId}/records?nested[Projects][fields]=*
+
+# Get specific fields only
+GET /api/v3/data/{baseId}/{tableId}/records?nested[Projects][fields]=name,status,budget
 ```
 
-**Why?** In API v2, nested fields only return primary keys by default. You must explicitly request fields.
-
-### For API v3
-
-No special parameter needed! Nested fields already contain actual data by default.
-
-```bash
-# Example: This returns full nested data automatically
-GET /api/v3/data/{baseId}/{tableId}/records
-
-# Optional: Control how many nested records per field (default: 1000)
-GET /api/v3/data/{baseId}/{tableId}/records?nestedLimit=50
-```
-
-**Why?** API v3 returns full nested data automatically. Use `nestedLimit` to control the quantity.
+**Why?** Both v2 and v3 return only counts or primary keys by default for nested fields. You must explicitly request fields to get actual data.
 
 ## Parameters Reference
 
 | Parameter | API Version | Purpose | Default |
 |-----------|-------------|---------|---------|
-| `nested[column][fields]` | v2 | Specify which fields to return from nested data | Primary keys only |
-| `nestedLimit` | v3 | Limit number of nested records per field | 1000 |
+| `nested[column][fields]` | v2, v3 | Specify which fields to return from nested data | Counts/primary keys only |
+| `nestedLimit` | v2, v3 | Limit number of nested records per field | 1000 (v3), 25 (v2) |
 | `nestedPage` | v3 | Paginate through nested records | 1 |
 
 ## Examples
 
-### API v2 - Get all nested data
+### Get all nested data
 ```bash
+# API v2
 GET /api/v2/tables/tbl_employees/records?nested[Department][fields]=*&nested[Projects][fields]=*
+
+# API v3 (same approach)
+GET /api/v3/data/ws_abc123/tbl_employees/records?nested[Department][fields]=*&nested[Projects][fields]=*
 ```
 
-### API v3 - Get all nested data (default behavior)
+### Limit nested records
 ```bash
-GET /api/v3/data/ws_abc123/tbl_employees/records
+# API v3 - Get nested data with limit
+GET /api/v3/data/ws_abc123/tbl_employees/records?nested[Projects][fields]=*&nestedLimit=25
 ```
 
-### API v3 - Limit nested records
+### Multiple link fields
 ```bash
-GET /api/v3/data/ws_abc123/tbl_employees/records?nestedLimit=25
+# Get data from multiple linked columns
+GET /api/v3/data/{baseId}/{tableId}/records?nested[Projects][fields]=*&nested[Customers][fields]=name,email
 ```
 
 For more details, see [NESTED_FIELDS_GUIDE.md](./NESTED_FIELDS_GUIDE.md)

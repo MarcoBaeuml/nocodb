@@ -4,16 +4,36 @@ This guide explains how to control nested (linked) field data in NocoDB API resp
 
 ## Overview
 
-When your tables have relationships (Links/LinkToAnotherRecord fields), API responses can include data from linked records. This guide explains how to control what nested data is returned.
+When your tables have relationships (Links/LinkToAnotherRecord fields), API responses can include data from linked records. **By default, both v2 and v3 APIs return only counts or primary keys for nested fields**. This guide explains how to get actual field data.
 
-## API v2 (Legacy)
+## Common Behavior (Both v2 and v3)
 
-In API v2, nested fields return **only primary keys by default**. To get actual field data from nested records, you need to explicitly request fields using the `nested` parameter.
+### Default Behavior
+
+Without any nested parameters, linked fields return only:
+- **Count** (number of linked records)
+- **Primary keys** (IDs of linked records)
+
+**They do NOT return the actual field data from linked records.**
+
+### Getting Actual Data
+
+To get actual field data from linked records, you must use the `nested[columnName][fields]` parameter:
+
+```bash
+# Get all fields from linked records
+nested[columnName][fields]=*
+
+# Get specific fields only
+nested[columnName][fields]=field1,field2,field3
+```
+
+## API v2 
 
 ### Basic Syntax
 
-```
-nested[<columnName>][fields]=<field1>,<field2>,...
+```bash
+GET /api/v2/tables/{tableId}/records?nested[<columnName>][fields]=*
 ```
 
 ### Examples
@@ -24,7 +44,7 @@ nested[<columnName>][fields]=<field1>,<field2>,...
 GET /api/v2/tables/{tableId}/records?nested[Projects][fields]=*
 ```
 
-This will return all fields from linked `Projects` records instead of just IDs.
+Returns all fields from linked `Projects` records instead of just counts.
 
 #### Get specific fields from nested records
 
@@ -32,7 +52,7 @@ This will return all fields from linked `Projects` records instead of just IDs.
 GET /api/v2/tables/{tableId}/records?nested[Projects][fields]=name,status,budget
 ```
 
-This returns only the `name`, `status`, and `budget` fields from linked `Projects` records.
+Returns only the `name`, `status`, and `budget` fields from linked `Projects` records.
 
 #### Multiple nested relations
 
@@ -47,48 +67,70 @@ GET /api/v2/tables/{tableId}/records?nested[Projects][fields]=*&nested[Customers
 - `nested[<columnName>][limit]` - Limit number of nested records (default: 25)
 - `nested[<columnName>][offset]` - Pagination offset for nested records
 
-Example:
+**Example with limit:**
 ```bash
 GET /api/v2/tables/{tableId}/records?nested[Projects][fields]=*&nested[Projects][limit]=50&nested[Projects][sort]=name
 ```
 
-## API v3 (Current)
+## API v3
 
-API v3 has a different approach - **nested fields return actual data by default**, not just counts or IDs.
+### Important Note
 
-### Key Differences from v2
+**API v3 uses the SAME nested parameter structure as v2.** The primary difference is in the response format and global limit parameter.
 
-1. **Full data by default**: Nested records include all their fields automatically
-2. **No per-field control**: You cannot specify which nested fields to include (all or nothing)
-3. **Global limit**: The `nestedLimit` parameter controls the number of nested records for ALL link fields
+### Basic Syntax
 
-### Parameters
+```bash
+GET /api/v3/data/{baseId}/{tableId}/records?nested[<columnName>][fields]=*
+```
 
-#### `nestedLimit` (Query Parameter)
+### Examples
 
-Controls how many linked records are returned for each link field in the response.
+#### Get all fields from nested records
+
+```bash
+GET /api/v3/data/{baseId}/{tableId}/records?nested[Projects][fields]=*
+```
+
+#### Get specific fields
+
+```bash
+GET /api/v3/data/{baseId}/{tableId}/records?nested[Projects][fields]=name,status,budget
+```
+
+#### Multiple nested relations
+
+```bash
+GET /api/v3/data/{baseId}/{tableId}/records?nested[Projects][fields]=*&nested[Customers][fields]=name,email
+```
+
+### Additional Parameters (v3)
+
+#### `nestedLimit` (Global Limit)
+
+Controls the maximum number of linked records returned for ALL link fields.
 
 - **Default**: 1000 records per link field
 - **Configurable via**: `DB_QUERY_LIMIT_LTAR_V3_LIMIT` environment variable
-- **Applies to**: All link/relation fields in the response
+- **Applies to**: All link/relation fields in the response (when fields are requested)
 
 **Example:**
 ```bash
-GET /api/v3/data/{baseId}/{tableId}/records?nestedLimit=50
+GET /api/v3/data/{baseId}/{tableId}/records?nested[Projects][fields]=*&nestedLimit=50
 ```
 
-This limits each link field to return at most 50 linked records with their full data.
+This gets all fields from Projects but limits to 50 records maximum.
 
-#### `nestedPage` (Query Parameter)
+#### `nestedPage` 
 
 Controls pagination of nested records.
 
 - **Default**: 1 (first page)
-- **Use with**: `nestedLimit` to navigate through pages of nested data
+- **Use with**: `nestedLimit` to navigate through pages
 
 **Example:**
 ```bash
-GET /api/v3/data/{baseId}/{tableId}/records?nestedLimit=50&nestedPage=2
+GET /api/v3/data/{baseId}/{tableId}/records?nested[Projects][fields]=*&nestedLimit=50&nestedPage=2
 ```
 
 ### Response Structure (v3)
@@ -108,14 +150,6 @@ GET /api/v3/data/{baseId}/{tableId}/records?nestedLimit=50&nestedPage=2
               "Status": "Active",
               "Budget": 50000
             }
-          },
-          {
-            "id": "proj002",
-            "fields": {
-              "ProjectName": "Mobile App",
-              "Status": "Planning",
-              "Budget": 75000
-            }
           }
         ]
       }
@@ -128,40 +162,27 @@ GET /api/v3/data/{baseId}/{tableId}/records?nestedLimit=50&nestedPage=2
 }
 ```
 
-### Pagination with Nested Data
-
-When `nestedNext` is present in the response, it means some link fields have more records than the `nestedLimit`. Use `nestedPage` to retrieve additional pages:
-
-```bash
-# First page
-GET /api/v3/data/{baseId}/{tableId}/records?nestedLimit=50&nestedPage=1
-
-# Second page
-GET /api/v3/data/{baseId}/{tableId}/records?nestedLimit=50&nestedPage=2
-```
-
 ## Comparison Table
 
 | Feature | API v2 | API v3 |
 |---------|--------|--------|
-| Default nested data | Primary keys only | Full record data |
-| Control nested fields | Per-column: `nested[col][fields]` | Global: `nestedLimit` |
-| Default limit | 25 per column | 1000 per column |
-| Per-field filtering | ✅ Yes | ❌ No |
-| Nested sorting | ✅ Yes | ❌ No |
-| Nested filtering | ✅ Yes | ❌ No |
-| Max nesting depth | Unlimited | 3 levels (configurable) |
+| Default nested data | Counts/Primary keys only | Counts/Primary keys only |
+| Get full data | `nested[col][fields]=*` | `nested[col][fields]=*` |
+| Per-field limit | `nested[col][limit]` | Global `nestedLimit` |
+| Default limit | 25 per column | 1000 (global) |
+| Per-field filtering | ✅ `nested[col][where]` | ✅ `nested[col][where]` |
+| Per-field sorting | ✅ `nested[col][sort]` | ✅ `nested[col][sort]` |
+| Response format | Flat objects | Nested `{id, fields}` structure |
+
+## Common Mistake
+
+**Incorrect assumption**: "API v3 returns full nested data by default"
+
+**Reality**: Both v2 and v3 return only counts or primary keys by default. You must explicitly use `nested[columnName][fields]=*` to get actual field data.
 
 ## Migration from v2 to v3
 
-If you're migrating from v2 to v3:
-
-1. **Remove `nested[column][fields]` parameters** - v3 returns full data automatically
-2. **Replace per-column limits with global `nestedLimit`** - v3 uses a single limit for all fields
-3. **Update response parsing** - v3 uses a different structure with `id` and `fields` objects
-4. **Adjust pagination logic** - v3 uses `nestedPage` instead of per-column offsets
-
-### Example Migration
+The nested parameter structure is the **same** between v2 and v3:
 
 **Before (v2):**
 ```bash
@@ -170,27 +191,49 @@ GET /api/v2/tables/tbl123/records?nested[Projects][fields]=*&nested[Projects][li
 
 **After (v3):**
 ```bash
-GET /api/v3/data/base123/tbl123/records?nestedLimit=25
+GET /api/v3/data/base123/tbl123/records?nested[Projects][fields]=*&nestedLimit=25
 ```
+
+Main changes:
+1. URL structure: `/api/v2/tables/` → `/api/v3/data/{baseId}/`
+2. Per-column limits → Global `nestedLimit` parameter
+3. Response structure with nested `{id, fields}` format
 
 ## Best Practices
 
-### For v2
-- Use `nested[col][fields]=*` to get all nested data
-- Be specific with fields to reduce response size: `nested[col][fields]=id,name`
-- Use limits to prevent large payloads: `nested[col][limit]=50`
+1. **Always specify fields**: Use `nested[columnName][fields]=*` to get data instead of counts
+2. **Use specific fields when possible**: Request only needed fields to reduce response size
+3. **Set appropriate limits**: Use `nestedLimit` to prevent large payloads
+4. **Monitor pagination**: Check `nestedNext` in responses for truncated data
 
-### For v3
-- Use `nestedLimit` to control response size
-- Monitor `nestedNext` in responses to detect truncated data
-- Consider the default 1000-record limit when designing your application
-- For very large datasets, implement pagination using `nestedPage`
+## Examples by Use Case
+
+### Get employee data with all project details
+
+```bash
+# API v3
+GET /api/v3/data/{baseId}/employees/records?nested[Projects][fields]=*&nestedLimit=100
+```
+
+### Get orders with customer name and email only
+
+```bash
+# API v3
+GET /api/v3/data/{baseId}/orders/records?nested[Customer][fields]=name,email
+```
+
+### Get posts with limited interactions
+
+```bash
+# API v3
+GET /api/v3/data/{baseId}/posts/records?nested[post_interactions][fields]=*&nestedLimit=10
+```
 
 ## Environment Configuration
 
 ### v3 Default Nested Limit
 
-You can configure the default `nestedLimit` value server-wide:
+Configure the default `nestedLimit` value server-wide:
 
 ```bash
 DB_QUERY_LIMIT_LTAR_V3_LIMIT=500
@@ -198,20 +241,16 @@ DB_QUERY_LIMIT_LTAR_V3_LIMIT=500
 
 This sets the default to 500 records per link field instead of 1000.
 
-### Maximum Nesting Depth
-
-The maximum nesting depth can be configured via code (default is 3 levels deep). This prevents infinite recursion in self-referential relationships.
-
 ## Common Issues
 
-### Issue: Getting only IDs in v2 responses
+### Issue: Getting only counts (numbers) in responses
 **Solution**: Add `nested[columnName][fields]=*` to your query
 
-### Issue: Too many nested records in v3
-**Solution**: Use `nestedLimit` parameter to reduce the number of returned records
+### Issue: Too many nested records
+**Solution**: Use `nestedLimit` parameter to reduce the number
 
 ### Issue: Missing nested data
-**Solution**: Check if the relationship exists and the user has permissions to access linked records
+**Solution**: Check permissions and verify the relationship exists
 
 ## Additional Resources
 
