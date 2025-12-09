@@ -252,6 +252,7 @@ const getAst = async (
               fieldsSet: new Set(),
             }),
           throwErrorIfInvalidParams,
+          apiVersion,
         });
 
         value = ast;
@@ -273,17 +274,23 @@ const getAst = async (
 
       const model = await colOpt.getRelatedTable(context);
 
+      // For V3 API, extract all fields by default (not just primaries)
+      // to support embedded relation field data
+      const shouldExtractOnlyPrimaries =
+        apiVersion === NcApiVersion.V3 ? false : nestedFields !== '*';
+
       value = (
         await getAst(refTableContext, {
           model,
           query: query?.nested?.[col.title],
-          extractOnlyPrimaries: nestedFields !== '*',
+          extractOnlyPrimaries: shouldExtractOnlyPrimaries,
           dependencyFields: (dependencyFields.nested[col.title] =
             dependencyFields.nested[col.title] || {
               nested: {},
               fieldsSet: new Set(),
             }),
           throwErrorIfInvalidParams,
+          apiVersion,
         })
       ).ast;
     }
