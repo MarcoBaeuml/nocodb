@@ -229,14 +229,24 @@ const getAst = async (
 
   const columns = model.columns;
 
-  const ast: Ast = await columns.reduce(async (obj, col: Column) => {
-    let value: number | boolean | { [key: string]: any } = 1;
-    // Check both col.title and col.id for nested fields
+  // Helper function to get nested field config for a column
+  const getNestedFieldConfig = (col: Column) => {
     const nestedFields =
       query?.nested?.[col.title]?.fields ||
       query?.nested?.[col.title]?.f ||
       query?.nested?.[col.id]?.fields ||
       query?.nested?.[col.id]?.f;
+    
+    const nestedQuery = query?.nested?.[col.title] || query?.nested?.[col.id];
+    const nestedKey = query?.nested?.[col.title] ? col.title : col.id;
+    
+    return { nestedFields, nestedQuery, nestedKey };
+  };
+
+  const ast: Ast = await columns.reduce(async (obj, col: Column) => {
+    let value: number | boolean | { [key: string]: any } = 1;
+    const { nestedFields, nestedQuery, nestedKey } = getNestedFieldConfig(col);
+    
     if (nestedFields && nestedFields !== '*') {
       if (col.uidt === UITypes.LinkToAnotherRecord) {
         const colOpt = await col.getColOptions<LinkToAnotherRecordColumn>(
@@ -245,10 +255,6 @@ const getAst = async (
         const model = await colOpt.getRelatedTable(context);
 
         const { refContext: refTableContext } = colOpt.getRelContext(context);
-
-        // Use the nested query for whichever key (title or id) was provided
-        const nestedQuery = query?.nested?.[col.title] || query?.nested?.[col.id];
-        const nestedKey = query?.nested?.[col.title] ? col.title : col.id;
 
         const { ast } = await getAst(refTableContext, {
           model,
@@ -279,10 +285,6 @@ const getAst = async (
       const { refContext: refTableContext } = colOpt.getRelContext(context);
 
       const model = await colOpt.getRelatedTable(context);
-
-      // Use the nested query for whichever key (title or id) was provided
-      const nestedQuery = query?.nested?.[col.title] || query?.nested?.[col.id];
-      const nestedKey = query?.nested?.[col.title] ? col.title : col.id;
 
       value = (
         await getAst(refTableContext, {
