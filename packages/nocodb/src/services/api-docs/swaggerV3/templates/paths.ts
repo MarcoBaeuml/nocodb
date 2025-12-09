@@ -4,6 +4,7 @@ import {
   fieldsParam,
   hasAttachmentColumns,
   linkFieldNameParam,
+  nestedLimitParam,
   nestedPageParam,
   pageParam,
   pageSizeParam,
@@ -38,6 +39,7 @@ export const getModelPaths = async (
         sortParam,
         whereParam,
         pageParam,
+        nestedLimitParam,
         nestedPageParam,
         pageSizeParam,
         viewIdParam(ctx.views),
@@ -190,7 +192,7 @@ export const getModelPaths = async (
       : {}),
   },
   [`/api/v3/data/${ctx.baseId}/${ctx.tableId}/records/{recordId}`]: {
-    parameters: [recordIdParam, fieldsParam],
+    parameters: [recordIdParam, fieldsParam, nestedLimitParam],
     get: {
       summary: `${ctx.tableName} read`,
       description: 'Read a row data by using the **primary key** column value.',
