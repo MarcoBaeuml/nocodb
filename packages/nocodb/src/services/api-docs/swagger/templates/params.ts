@@ -162,7 +162,7 @@ export const nestedFieldParam = (colName) => ({
   },
   in: 'query',
   name: `nested[${colName}][fields]`,
-  description: `Array of field names or comma separated filed names to include in the in nested column \`${colName}\` result. In array syntax pass it like \`fields[]=field1&fields[]=field2.\`. Example : \`nested[${colName}][fields]=field1,field2\``,
+  description: `Array of field names or comma separated field names to include in the nested column \`${colName}\` result. **By default, only primary keys are returned for nested data.** Use this parameter to get actual field data from linked records.\n\n**Special value:** Use \`*\` to include all fields.\n\nExamples:\n- \`nested[${colName}][fields]=*\` - Returns all fields from linked records\n- \`nested[${colName}][fields]=field1,field2\` - Returns only field1 and field2\n- In array syntax: \`nested[${colName}][fields][]=field1&nested[${colName}][fields][]=field2\``,
 });
 export const nestedSortParam = (colName) => ({
   schema: {
