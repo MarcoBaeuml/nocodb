@@ -231,9 +231,12 @@ const getAst = async (
 
   const ast: Ast = await columns.reduce(async (obj, col: Column) => {
     let value: number | boolean | { [key: string]: any } = 1;
-    // TODO: also get from col.id
+    // Check both col.title and col.id for nested fields
     const nestedFields =
-      query?.nested?.[col.title]?.fields || query?.nested?.[col.title]?.f;
+      query?.nested?.[col.title]?.fields ||
+      query?.nested?.[col.title]?.f ||
+      query?.nested?.[col.id]?.fields ||
+      query?.nested?.[col.id]?.f;
     if (nestedFields && nestedFields !== '*') {
       if (col.uidt === UITypes.LinkToAnotherRecord) {
         const colOpt = await col.getColOptions<LinkToAnotherRecordColumn>(
@@ -243,11 +246,15 @@ const getAst = async (
 
         const { refContext: refTableContext } = colOpt.getRelContext(context);
 
+        // Use the nested query for whichever key (title or id) was provided
+        const nestedQuery = query?.nested?.[col.title] || query?.nested?.[col.id];
+        const nestedKey = query?.nested?.[col.title] ? col.title : col.id;
+
         const { ast } = await getAst(refTableContext, {
           model,
-          query: query?.nested?.[col.title],
-          dependencyFields: (dependencyFields.nested[col.title] =
-            dependencyFields.nested[col.title] || {
+          query: nestedQuery,
+          dependencyFields: (dependencyFields.nested[nestedKey] =
+            dependencyFields.nested[nestedKey] || {
               nested: {},
               fieldsSet: new Set(),
             }),
@@ -273,13 +280,17 @@ const getAst = async (
 
       const model = await colOpt.getRelatedTable(context);
 
+      // Use the nested query for whichever key (title or id) was provided
+      const nestedQuery = query?.nested?.[col.title] || query?.nested?.[col.id];
+      const nestedKey = query?.nested?.[col.title] ? col.title : col.id;
+
       value = (
         await getAst(refTableContext, {
           model,
-          query: query?.nested?.[col.title],
+          query: nestedQuery,
           extractOnlyPrimaries: nestedFields !== '*',
-          dependencyFields: (dependencyFields.nested[col.title] =
-            dependencyFields.nested[col.title] || {
+          dependencyFields: (dependencyFields.nested[nestedKey] =
+            dependencyFields.nested[nestedKey] || {
               nested: {},
               fieldsSet: new Set(),
             }),
