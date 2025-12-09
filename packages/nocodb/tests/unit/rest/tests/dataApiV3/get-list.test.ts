@@ -184,7 +184,8 @@ describe('dataApiV3', () => {
       });
 
       it('Nested List - Link to another record', async function () {
-        const expectedRecords = [0, 2, 0, 1, 0, 6, 0, 0, 1, 1];
+        // V3 should return full list of linked records inline, not just counts
+        const expectedRecordCounts = [0, 2, 0, 1, 0, 6, 0, 0, 1, 1];
 
         const records = await ncAxiosGet({
           url: `${urlPrefix}/${countryTable!.id}/records`,
@@ -192,11 +193,73 @@ describe('dataApiV3', () => {
             limit: 10,
           },
         });
-        expect(records.body.records.length).to.equal(expectedRecords.length);
+        expect(records.body.records.length).to.equal(expectedRecordCounts.length);
+
+        // Verify that Cities field contains arrays of city records (not counts)
         const cityList = records.body.records.map(
           (r: any) => r.fields['Cities'],
         );
-        expect(cityList).to.deep.equal(expectedRecords);
+
+        // Each Cities field should be an array
+        cityList.forEach((cities: any, index: number) => {
+          expect(Array.isArray(cities)).to.be.true;
+          expect(cities.length).to.equal(expectedRecordCounts[index]);
+
+          // Each city in the array should be an object with id and fields
+          if (cities.length > 0) {
+            cities.forEach((city: any) => {
+              expect(city).to.have.property('id');
+              expect(city).to.have.property('fields');
+              expect(city.fields).to.have.property('City');
+            });
+          }
+        });
+      });
+
+      it('Nested List - Link to another record with pagination', async function () {
+        // Test nested pagination for LTAR fields
+        // Find a country with multiple cities to test pagination
+        const records = await ncAxiosGet({
+          url: `${urlPrefix}/${countryTable!.id}/records`,
+          query: {
+            limit: 10,
+            nestedLimit: 2, // Limit nested records to 2 per relation
+          },
+        });
+
+        expect(records.body.records.length).to.equal(10);
+
+        // Find the first country with at least 2 cities (to test pagination)
+        const countryWithCities = records.body.records.find(
+          (r: any) => Array.isArray(r.fields['Cities']) && r.fields['Cities'].length >= 2
+        );
+        expect(countryWithCities).to.not.be.undefined;
+        expect(countryWithCities.fields['Cities']).to.be.an('array');
+        expect(countryWithCities.fields['Cities'].length).to.equal(2); // Should be limited to 2
+
+        // Test second page for the same country by using its ID
+        const countryId = countryWithCities.id;
+        const recordsPage2 = await ncAxiosGet({
+          url: `${urlPrefix}/${countryTable!.id}/records`,
+          query: {
+            limit: 10,
+            nestedLimit: 2,
+            nestedPage: 2, // Get second page of nested records
+          },
+        });
+
+        const countryWithCitiesPage2 = recordsPage2.body.records.find(
+          (r: any) => r.id === countryId
+        );
+        expect(countryWithCitiesPage2).to.not.be.undefined;
+        expect(countryWithCitiesPage2.fields['Cities']).to.be.an('array');
+
+        // If there's a second page, verify the cities are different from page 1
+        if (countryWithCitiesPage2.fields['Cities'].length > 0) {
+          const citiesPage1Ids = countryWithCities.fields['Cities'].map((c: any) => c.id);
+          const citiesPage2Ids = countryWithCitiesPage2.fields['Cities'].map((c: any) => c.id);
+          expect(citiesPage1Ids).to.not.deep.equal(citiesPage2Ids);
+        }
       });
 
       it('Nested List - Lookup', async function () {
