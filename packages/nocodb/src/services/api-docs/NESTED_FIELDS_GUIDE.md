@@ -58,7 +58,7 @@ GET /api/v3/data/{baseId}/{tableId}/records?nested[cl_abc123][fields]=*
 ```
 
 To find the column ID:
-1. Use the table metadata API: `GET /api/v3/meta/tables/{tableId}`
+1. Use the table metadata API: `GET /api/v2/meta/tables/{tableId}`
 2. Look for your column in the `columns` array
 3. Use the `id` field
 

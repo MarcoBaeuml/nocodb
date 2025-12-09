@@ -95,9 +95,9 @@ GET /api/v2/tables/{tableId}/records?nested[Projects][fields]=*&nested[Projects]
 | Issue | Solution |
 |-------|----------|
 | Still getting counts | Try URL encoding: `%5B` for `[`, `%5D` for `]` |
-| Column not found | Use column ID instead of title (get from `GET /api/v3/meta/tables/{tableId}`) |
+| Column not found | Use column ID instead of title (get from `GET /api/v2/meta/tables/{tableId}`) |
 | Too much data | Add `&nestedLimit=25` (v3) or `&nested[col][limit]=25` (v2) |
-| Special characters in name | Use column ID from table metadata API |
+| Special characters in name | Use column ID from metadata: `GET /api/v2/meta/tables/{tableId}` |
 
 ## Key Points
 
