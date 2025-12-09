@@ -188,7 +188,7 @@ const nocoExecuteSingle = async (
                 dataTree?.[key]?.[i],
                 Object.assign(
                   {
-                    nestedPage: rootArgs?.nestedPage,
+                    page: rootArgs?.nestedPage,
                     limit: rootArgs?.nestedLimit,
                   },
                   rootArgs?.nested?.[key] || {},
