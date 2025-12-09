@@ -75,6 +75,16 @@ export const nestedPageParam = {
   description:
     'Controls pagination of nested (linked) records in the API response by specifying the page number. By default, the first page is returned; increment the page number to retrieve subsequent pages.\n\nExample: nestedPage=`2` will return the second page of nested data records in the dataset.',
 };
+export const nestedLimitParam = {
+  schema: {
+    type: 'integer',
+    minimum: 1,
+  },
+  in: 'query',
+  name: 'nestedLimit',
+  description:
+    'Sets a limit on the number of linked records returned for each link/relation field in the API response. By default, up to 1000 linked records are returned per field. In API v3, nested fields contain the actual linked record data (not just count). Use this parameter to control how many linked records are included.\n\nExample: nestedLimit=`50` will limit each link field to return at most 50 linked records with their full data.\n\n**Note**: This applies to all link fields in the response. The default value can be configured via the `DB_QUERY_LIMIT_LTAR_V3_LIMIT` environment variable.',
+};
 
 export const linkFieldNameParam = (columns: SwaggerColumn[]) => {
   const linkColumnIds = [];
