@@ -184,7 +184,8 @@ describe('dataApiV3', () => {
       });
 
       it('Nested List - Link to another record', async function () {
-        const expectedRecords = [0, 2, 0, 1, 0, 6, 0, 0, 1, 1];
+        // V3 should return full list of linked records inline, not just counts
+        const expectedRecordCounts = [0, 2, 0, 1, 0, 6, 0, 0, 1, 1];
 
         const records = await ncAxiosGet({
           url: `${urlPrefix}/${countryTable!.id}/records`,
@@ -192,11 +193,65 @@ describe('dataApiV3', () => {
             limit: 10,
           },
         });
-        expect(records.body.records.length).to.equal(expectedRecords.length);
+        expect(records.body.records.length).to.equal(expectedRecordCounts.length);
+        
+        // Verify that Cities field contains arrays of city records (not counts)
         const cityList = records.body.records.map(
           (r: any) => r.fields['Cities'],
         );
-        expect(cityList).to.deep.equal(expectedRecords);
+        
+        // Each Cities field should be an array
+        cityList.forEach((cities: any, index: number) => {
+          expect(Array.isArray(cities)).to.be.true;
+          expect(cities.length).to.equal(expectedRecordCounts[index]);
+          
+          // Each city in the array should be an object with id and fields
+          if (cities.length > 0) {
+            cities.forEach((city: any) => {
+              expect(city).to.have.property('id');
+              expect(city).to.have.property('fields');
+              expect(city.fields).to.have.property('City');
+            });
+          }
+        });
+      });
+
+      it('Nested List - Link to another record with pagination', async function () {
+        // Test nested pagination for LTAR fields
+        // Country with index 5 has 6 cities, let's test pagination on that
+        const records = await ncAxiosGet({
+          url: `${urlPrefix}/${countryTable!.id}/records`,
+          query: {
+            limit: 10,
+            nestedLimit: 2, // Limit nested records to 2 per relation
+          },
+        });
+        
+        expect(records.body.records.length).to.equal(10);
+        
+        // Find the country with 6 cities (index 5)
+        const countryWithCities = records.body.records[5];
+        expect(countryWithCities.fields['Cities']).to.be.an('array');
+        expect(countryWithCities.fields['Cities'].length).to.equal(2); // Should be limited to 2
+        
+        // Test second page
+        const recordsPage2 = await ncAxiosGet({
+          url: `${urlPrefix}/${countryTable!.id}/records`,
+          query: {
+            limit: 10,
+            nestedLimit: 2,
+            nestedPage: 2, // Get second page of nested records
+          },
+        });
+        
+        const countryWithCitiesPage2 = recordsPage2.body.records[5];
+        expect(countryWithCitiesPage2.fields['Cities']).to.be.an('array');
+        expect(countryWithCitiesPage2.fields['Cities'].length).to.equal(2);
+        
+        // Verify the cities are different from page 1
+        const citiesPage1Ids = countryWithCities.fields['Cities'].map((c: any) => c.id);
+        const citiesPage2Ids = countryWithCitiesPage2.fields['Cities'].map((c: any) => c.id);
+        expect(citiesPage1Ids).to.not.deep.equal(citiesPage2Ids);
       });
 
       it('Nested List - Lookup', async function () {
