@@ -939,11 +939,11 @@ export class MetaDiffsService {
                   });
                 } else if (change.relationType === RelationTypes.HAS_MANY) {
                   const title = getUniqueColumnAliasName(
-                    childModel.columns,
+                    parentModel.columns,
                     pluralize(childModel.title || childModel.table_name),
                   );
                   await Column.insert<LinkToAnotherRecordColumn>(context, {
-                    uidt: UITypes.Links,
+                    uidt: UITypes.LinkToAnotherRecord,
                     title,
                     fk_model_id: parentModel.id,
                     fk_related_model_id: childModel.id,
